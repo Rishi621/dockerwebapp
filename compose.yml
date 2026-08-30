@@ -1,8 +1,6 @@
-version: "3.9"
-
 services:
   devopsdb:
-    image: shaikmustafa/deepika:db
+    image: yaswanth21321/private_test:dbimage
     ports:
       - "3306:3306"
     deploy:
@@ -11,7 +9,7 @@ services:
       - mynetwork
 
   application:
-    image: shaikmustafa/deepika:app
+    image: yaswanth21321/private_test:appimage
     ports:
       - "1111:8080"
     deploy:
