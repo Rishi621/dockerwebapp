@@ -62,7 +62,6 @@ services:
       - GF_USERS_ALLOW_SIGN_UP=false
     volumes:
       - grafana_data:/var/lib/grafana
-      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
     deploy:
       replicas: 1
       placement:
@@ -71,7 +70,6 @@ services:
       - mynetwork
     depends_on:
       - prometheus
-
   # Node Exporter (host metrics)
   node-exporter:
     image: prom/node-exporter:v1.8.2
@@ -112,7 +110,7 @@ services:
         constraints: [node.role == manager]
     environment:
       - PROMETHEUS_URL=http://prometheus:9090
-      - CHECK_INTERVAL=60
+      - CHECK_INTERVAL=20
       - ANOMALY_THRESHOLD=0.85
     networks:
       - mynetwork

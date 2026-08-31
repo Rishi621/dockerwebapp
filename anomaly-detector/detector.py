@@ -9,7 +9,7 @@ from datetime import datetime
 # Force unbuffered output
 sys.stdout.reconfigure(line_buffering=True)
 
-PROMETHEUS_URL = os.getenv("PROMETHEUS_URL", "http://34.233.128.68:9090")
+PROMETHEUS_URL = os.getenv("PROMETHEUS_URL", "http://prometheus:9090")
 CHECK_INTERVAL = int(os.getenv("CHECK_INTERVAL", "30"))
 ANOMALY_THRESHOLD = float(os.getenv("ANOMALY_THRESHOLD", "0.85"))
 
@@ -33,10 +33,17 @@ def query_prometheus(query):
         return None
 
 def get_metrics():
+    # These queries work better with cAdvisor + Docker Swarm
     metrics = {
-        "cpu": query_prometheus('avg(rate(container_cpu_usage_seconds_total{name=~".*application.*"}[1m]))'),
-        "memory": query_prometheus('avg(container_memory_usage_bytes{name=~".*application.*"}) / 1024 / 1024'),
-        "network_rx": query_prometheus('sum(rate(container_network_receive_bytes_total{name=~".*application.*"}[1m]))')
+        "cpu": query_prometheus(
+            'avg(rate(container_cpu_usage_seconds_total{image=~".*appimage.*"}[1m]))'
+        ),
+        "memory": query_prometheus(
+            'avg(container_memory_usage_bytes{image=~".*appimage.*"}) / 1024 / 1024'
+        ),
+        "network_rx": query_prometheus(
+            'sum(rate(container_network_receive_bytes_total{image=~".*appimage.*"}[1m]))'
+        )
     }
     return metrics
 
