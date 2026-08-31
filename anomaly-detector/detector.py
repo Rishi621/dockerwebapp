@@ -9,7 +9,7 @@ from datetime import datetime
 # Force unbuffered output
 sys.stdout.reconfigure(line_buffering=True)
 
-PROMETHEUS_URL = os.getenv("PROMETHEUS_URL", "http://prometheus:9090")
+PROMETHEUS_URL = os.getenv("PROMETHEUS_URL", "http://34.233.128.68:9090")
 CHECK_INTERVAL = int(os.getenv("CHECK_INTERVAL", "30"))
 ANOMALY_THRESHOLD = float(os.getenv("ANOMALY_THRESHOLD", "0.85"))
 
