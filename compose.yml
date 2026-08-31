@@ -1,12 +1,21 @@
+version: "3.8"
+
 services:
   devopsdb:
     image: yaswanth21321/private_test:dbimage
     ports:
       - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: "devopspassword"
+      MYSQL_DATABASE: "accounts"
     deploy:
       replicas: 1
+      placement:
+        constraints: [node.role == manager]
     networks:
       - mynetwork
+    volumes:
+      - db_data:/var/lib/mysql
 
   application:
     image: yaswanth21321/private_test:appimage
@@ -14,11 +23,108 @@ services:
       - "1111:8080"
     deploy:
       replicas: 3
+      update_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
     depends_on:
       - devopsdb
     networks:
       - mynetwork
 
+  # ========== AIOps / Observability Stack ==========
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.enable-lifecycle'
+    deploy:
+      replicas: 1
+      placement:
+        constraints: [node.role == manager]
+    networks:
+      - mynetwork
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+    deploy:
+      replicas: 1
+      placement:
+        constraints: [node.role == manager]
+    networks:
+      - mynetwork
+    depends_on:
+      - prometheus
+
+  # Node Exporter (host metrics)
+  node-exporter:
+    image: prom/node-exporter:v1.8.2
+    ports:
+      - "9100:9100"
+    deploy:
+      mode: global
+    networks:
+      - mynetwork
+    command:
+      - '--path.rootfs=/host'
+    volumes:
+      - /:/host:ro,rslave
+
+  # cAdvisor (container metrics)
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    ports:
+      - "8081:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    deploy:
+      mode: global
+    networks:
+      - mynetwork
+    privileged: true
+
+  # Simple Anomaly Detector service
+  anomaly-detector:
+    image: yaswanth21321/private_test:anomaly
+    deploy:
+      replicas: 1
+      placement:
+        constraints: [node.role == manager]
+    environment:
+      - PROMETHEUS_URL=http://prometheus:9090
+      - CHECK_INTERVAL=60
+      - ANOMALY_THRESHOLD=0.85
+    networks:
+      - mynetwork
+    depends_on:
+      - prometheus
+
 networks:
   mynetwork:
     driver: overlay
+    attachable: true
+
+volumes:
+  db_data:
+  prometheus_data:
+  grafana_data:
